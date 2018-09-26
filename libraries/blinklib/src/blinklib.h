@@ -8,16 +8,14 @@
 #ifndef BLINKLIB_H_
 #define BLINKLIB_H_
 
-#include "blinkcore.h"
+//#include "blinkcore.h"
+
+#include "ArduinoTypes.h"
 
 #include "chainfunction.h"
 
 #include <stdbool.h>
 #include <stdint.h>
-
-// Duplicated from Arduino.h
-
-typedef uint8_t byte;
 
 
 /*
@@ -82,16 +80,16 @@ bool buttonDown();
 */
 
 
-// Send data on a single face. 
+// Send data on a single face.
 // Data is 6-bits wide, top bits are ignored.
 
 void irSendData( uint8_t face , uint8_t data   );
 
 // Simultaneously send data on all faces that have a `1` in bitmask
 // Data is 6-bits wide, top bits are ignored.
-void irSendDataBitmask(uint8_t data, uint8_t bitmask);   
-    
-// Broadcast data on all faces. 
+void irSendDataBitmask(uint8_t data, uint8_t bitmask);
+
+// Broadcast data on all faces.
 // Data is 6-bits wide, top bits are ignored.
 
 void irBroadcastData( uint8_t data );
@@ -103,19 +101,6 @@ bool irIsReadyOnFace( uint8_t face );
 // Read the most recently received data. Value 0-127. Blocks if no data ready.
 
 uint8_t irGetData( uint8_t led );
-
-
-#define ERRORBIT_PARITY       2    // There was an RX parity error
-#define ERRORBIT_OVERFLOW     3    // A received byte in lastValue was overwritten with a new value
-#define ERRORBIT_NOISE        4    // We saw unexpected extra pulses inside data
-#define ERRORBIT_DROPOUT      5    // We saw too few pulses, or two big a space between pulses
-#define ERRORBIT_DUMMY        6
-
-// Read the error state of the indicated LED
-// Clears the bits on read
-
-uint8_t irGetErrorBits( uint8_t face );
-
 
 
 /*
@@ -139,14 +124,14 @@ uint8_t irGetErrorBits( uint8_t face );
 // TODO: Use top bit(s) for something useful like automatic
 //       blink or twinkle or something like that.
 
-// Argh, these macros are so ugly... but so ideomatic arduino. Maybe use a class with bitfields like 
+// Argh, these macros are so ugly... but so ideomatic arduino. Maybe use a class with bitfields like
 // we did in pixel.cpp just so we can sleep at night?
 
 typedef uint16_t Color;
 
 // Number of brightness levels in each channel of a color
-#define BRIGHTNESS_LEVELS 32
-#define MAX_BRIGHTNESS (BRIGHTNESS_LEVELS-1)
+#define BRIGHTNESS_LEVELS_5BIT 32
+#define MAX_BRIGHTNESS_5BIT    (BRIGHTNESS_LEVELS_5BIT-1)
 
 #define GET_5BIT_R(color) ((color>>10)&31)
 #define GET_5BIT_G(color) ((color>> 5)&31)
@@ -154,46 +139,48 @@ typedef uint16_t Color;
 
 // R,G,B are all in the domain 0-31
 // Here we expose the internal color representation, but it is worth it
-// to get the performance and size benefits of static compilation 
+// to get the performance and size benefits of static compilation
 // Shame no way to do this right in C/C++
 
 #define MAKECOLOR_5BIT_RGB(r,g,b) ((r&31)<<10|(g&31)<<5|(b&31))
 
-#define RED         MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS    , 0                 , 0)
-#define ORANGE      MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS    ,MAX_BRIGHTNESS/2   , 0)
-#define YELLOW      MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS    ,MAX_BRIGHTNESS     , 0)
-#define GREEN       MAKECOLOR_5BIT_RGB( 0                ,MAX_BRIGHTNESS     , 0)
-#define CYAN        MAKECOLOR_5BIT_RGB( 0                ,MAX_BRIGHTNESS     ,MAX_BRIGHTNESS)
-#define BLUE        MAKECOLOR_5BIT_RGB( 0                , 0                 ,MAX_BRIGHTNESS)
-#define MAGENTA     MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS    , 0                 ,MAX_BRIGHTNESS)
+#define RED         MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS_5BIT, 0                    ,0)
+#define ORANGE      MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS_5BIT,MAX_BRIGHTNESS_5BIT/2 ,0)
+#define YELLOW      MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS_5BIT,MAX_BRIGHTNESS_5BIT   ,0)
+#define GREEN       MAKECOLOR_5BIT_RGB( 0                 ,MAX_BRIGHTNESS_5BIT   ,0)
+#define CYAN        MAKECOLOR_5BIT_RGB( 0                 ,MAX_BRIGHTNESS_5BIT   ,MAX_BRIGHTNESS_5BIT)
+#define BLUE        MAKECOLOR_5BIT_RGB( 0                 , 0                    ,MAX_BRIGHTNESS_5BIT)
+#define MAGENTA     MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS_5BIT, 0                    ,MAX_BRIGHTNESS_5BIT)
 
-#define WHITE       MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS    ,MAX_BRIGHTNESS     ,MAX_BRIGHTNESS)
+#define WHITE       MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS_5BIT,MAX_BRIGHTNESS_5BIT   ,MAX_BRIGHTNESS_5BIT)
 
-#define OFF         MAKECOLOR_5BIT_RGB( 0                , 0                 , 0)
+#define OFF         MAKECOLOR_5BIT_RGB( 0                 , 0                    , 0)
 
 // This maps 0-255 values to 0-31 values with the special case that 0 (in 0-255) is the only value that maps to 0 (in 0-31)
 // This leads to some slight non-linearity since there are not a uniform integral number of 1-255 values
-// to map to each of the 1-31 values. 
+// to map to each of the 1-31 values.
 
 // Make a new color from RGB values. Each value can be 0-255.
 
 Color makeColorRGB( byte red, byte green, byte blue );
- 
-// Dim the specified color. Brightness is 0-31 (0=off, 31=don't dim at all-keep original color)
+
+#define MAX_BRIGHTNESS (255)
+
+// Dim the specified color. Brightness is 0-255 (0=off, 255=don't dim at all-keep original color)
 // Inlined to allow static simplification at compile time
 
 inline Color dim( Color color, byte brightness) {
     return MAKECOLOR_5BIT_RGB(
-        (GET_5BIT_R(color)*brightness)/MAX_BRIGHTNESS,
-        (GET_5BIT_G(color)*brightness)/MAX_BRIGHTNESS,
-        (GET_5BIT_B(color)*brightness)/MAX_BRIGHTNESS
+        (GET_5BIT_R(color)*brightness)/255,
+        (GET_5BIT_G(color)*brightness)/255,
+        (GET_5BIT_B(color)*brightness)/255
     );
 }
 
 // Make a new color in the HSB colorspace. All values are 0-255.
 
 Color makeColorHSB( byte hue, byte saturation, byte brightness );
-    
+
 // Change the tile to the specified color
 // NOTE: all color changes are double buffered
 // and the display is updated when loop() returns
@@ -206,7 +193,9 @@ void setColor( Color newColor);
 
 void setFaceColor(  byte face, Color newColor );
 
-/* 
+void setColorOnFace( Color newColor , byte face );
+
+/*
 
     Timing functions
 
@@ -224,27 +213,25 @@ void setFaceColor(  byte face, Color newColor );
 
 unsigned long millis(void);
 
-#define NEVER ( (uint32_t)-1 )          // UINT32_MAX would be correct here, but generates a Symbol Not Found. 
+#define NEVER ( (uint32_t)-1 )          // UINT32_MAX would be correct here, but generates a Symbol Not Found.
 
 
 
 class Timer {
-	
-	private: 
-		
+
+	private:
+
 		uint32_t m_expireTime;		// When this timer will expire
-	
+
 	public:
-	
-		Timer() : m_expireTime(0) {};		// Timers come into this world pre-expired. 
-			
+
+		Timer() : m_expireTime(0) {};		// Timers come into this world pre-expired.
+
 		bool isExpired();
-				
-		void setMSFromNow( uint32_t ms );
-		
-		void setSecondsFromNow( uint16_t s );
-		
-		void setNever();					
+
+		void set( uint32_t ms );
+
+    uint32_t getRemaining();
 };
 
 
@@ -261,6 +248,7 @@ uint16_t rand( uint16_t limit );
 
 // Read the unique serial number for this blink tile
 // There are 9 bytes in all, so n can be 0-8
+
 
 byte getSerialNumberByte( byte n );
 
@@ -282,7 +270,7 @@ bool buttonDown(void);
 bool buttonPressed(void);
 
 
-/* 
+/*
 
     IR communications functions
 
@@ -296,7 +284,7 @@ void irSendDataBitmask( uint8_t face , uint8_t data );
 
 void irBroadcastData( uint8_t data );
 
-// Is there a received data ready to be read on the indicated face? Returns 0 if none. 
+// Is there a received data ready to be read on the indicated face? Returns 0 if none.
 
 bool irIsReadyOnFace( uint8_t face );
 
@@ -307,13 +295,13 @@ uint8_t irGetData( uint8_t face );
 
 /* Power functions */
 
-// The blink will automatically sleep if the button has not been pressed in 
+// The blink will automatically sleep if the button has not been pressed in
 // more than 10 minutes. The sleep is preemptive - the tile stops in the middle of whatever it
-// happens to be doing. 
+// happens to be doing.
 
 // The tile wakes from sleep when the button is pressed. Upon waking, it picks up from exactly
-// where it left off. It is up to the programmer to check to see if the blink has slept and then 
-// woken and react accordingly if desired. 
+// where it left off. It is up to the programmer to check to see if the blink has slept and then
+// woken and react accordingly if desired.
 
 
 // Returns 1 if we have slept and woken since last time we checked
@@ -342,5 +330,23 @@ void loop();
 // Add a function to be called after each pass though loop()
 
 void addOnLoop( chainfunction_struct *chainfunction );
+
+
+/*
+
+	Some syntactic sugar to make our progrmas look not so ugly.
+
+*/
+
+
+#define FACE_COUNT 6
+
+// 'Cause C ain't got iterators and all those FOR loops are too ugly.
+#define FOREACH_FACE(x) for(int x = 0; x < FACE_COUNT ; ++ x)       // Pretend this is a real language with iterators
+
+// Get the number of elements in an array.
+#define COUNT_OF(x) ((sizeof(x)/sizeof(x[0])))
+
+
 
 #endif /* BLINKLIB_H_ */
